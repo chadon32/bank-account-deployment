@@ -66,9 +66,9 @@ def menu():
         choice = input("Enter your choice: ")
 
         if choice == '1':
-            name = input("Enter name: ")
-            email = input("Enter email: ")
-            phone = input("Enter phone: ")
+            name = input("Enter your name: ")
+            email = input("Enter your email: ")
+            phone = input("Enter your phone: ")
             add_bankaccount(name, email, phone)
         elif choice == '2':
             view_bankaccounts()
