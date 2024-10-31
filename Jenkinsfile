@@ -1,56 +1,42 @@
 pipeline {
-    agent any
+	agent any
+	tools {
+		jfrog 'jfrog-cli'
+	}
+	environment {
+		DOCKER_IMAGE_NAME = "chadington.jfrog.io/docker-local/hello-frog:1.0.0"
+	}
+	stages {
+		stage('Clone') {
+			steps {
+				git branch: 'master', url: "https://github.com/jfrog/project-examples.git"
+			}
+		}
 
-    environment {
-        IMAGE_NAME = "chadon32/bankaccount-app" 
-        KUBECONFIG = '/var/lib/jenkins/.kube/config'  // Path to kubeconfig file in Jenkins
-    }
+		stage('Build Docker image') {
+			steps {
+				script {
+					docker.build("$DOCKER_IMAGE_NAME", 'docker-oci-examples/docker-example')
+				}
+			}
+		}
 
-    stages {
-        stage('Clone Repository') {
-            steps {
-                checkout scm
-            }
-        }
+		stage('Scan and push image') {
+			steps {
+				dir('docker-oci-examples/docker-example/') {
+					// Scan Docker image for vulnerabilities
+					jf 'docker scan $DOCKER_IMAGE_NAME'
 
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    docker.build("${IMAGE_NAME}:${env.BUILD_NUMBER}")
-                }
-            }
-        }
+					// Push image to Artifactory
+					jf 'docker push $DOCKER_IMAGE_NAME'
+				}
+			}
+		}
 
-        stage('Push Docker Image') {
-            steps {
-                // Using Docker Hub credentials as username and password
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', 
-                                                 usernameVariable: 'DOCKER_USER', 
-                                                 passwordVariable: 'DOCKER_PASS')]) {
-                    script {
-                        docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
-                            docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Deploy to Kubernetes') {
-            steps {
-                script {
-                    withKubeConfig(credentialsId: 'kubeconfig-credential-id') {
-                        sh 'kubectl apply -f manifests/pg-storage.yaml'
-                        sh 'kubectl apply -f manifests/postgres-deployment.yaml'
-                    }
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            cleanWs()
-        }
-    }
+		stage('Publish build info') {
+			steps {
+				jf 'rt build-publish'
+			}
+		}
+	}
 }
