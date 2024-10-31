@@ -2,31 +2,37 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "chadon32/bankaccount-app" 
-        KUBECONFIG = '/var/lib/jenkins/.kube/config'          // Path to your kubeconfig file in Jenkins
+        IMAGE_NAME = "chadon32/bankaccount-app"   // Docker Hub repository
+        KUBECONFIG = "/path/to/kubeconfig"                     // Path to kubeconfig file for Kubernetes access
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                checkout scm
+                checkout scm  // Clones the repository where Jenkinsfile is located
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'pip install -r src/requirements.txt'  // Install Python dependencies
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${IMAGE_NAME}:${env.BUILD_NUMBER}")
+                    docker.build("${IMAGE_NAME}:${env.BUILD_NUMBER}")  // Builds the Docker image with a unique tag
                 }
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKERHUB_TOKEN')]) {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     script {
-                        docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-token') {
-                            docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
+                        docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
+                            docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()  // Push image to Docker Hub
                         }
                     }
                 }
@@ -47,7 +53,7 @@ pipeline {
 
     post {
         always {
-            cleanWs()
+            cleanWs()  // Cleans workspace after the pipeline run
         }
     }
 }
