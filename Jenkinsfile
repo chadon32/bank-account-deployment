@@ -2,37 +2,31 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "chadon32/bankaccount-app"   // Docker Hub repository
-        KUBECONFIG = "/path/to/kubeconfig"                     // Path to kubeconfig file for Kubernetes access
+        IMAGE_NAME = "chadon32/bankaccount-app" // Replace with your Docker repository name
+        KUBECONFIG = '/var/lib/jenkins/.kube/config'          // Path to your kubeconfig file in Jenkins
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                checkout scm  // Clones the repository where Jenkinsfile is located
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                sh 'pip install -r src/requirements.txt'  // Install Python dependencies
+                checkout scm
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${IMAGE_NAME}:${env.BUILD_NUMBER}")  // Builds the Docker image with a unique tag
+                    docker.build("${IMAGE_NAME}:${env.BUILD_NUMBER}")
                 }
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([string(credentialsId: 'dockerhub-credentials', variable: 'DOCKERHUB_TOKEN')]) {
                     script {
                         docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
-                            docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()  // Push image to Docker Hub
+                            docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
                         }
                     }
                 }
@@ -53,7 +47,7 @@ pipeline {
 
     post {
         always {
-            cleanWs()  // Cleans workspace after the pipeline run
+            cleanWs()
         }
     }
 }
