@@ -1,0 +1,48 @@
+---
+- name: Configure MicroK8s and PostgreSQL
+  hosts: localhost
+  become: yes
+  tasks:
+
+    - name: Ensure MicroK8s is installed
+      apt:
+        name: snapd
+        state: present
+
+    - name: Install MicroK8s via snap
+      snap:
+        name: microk8s
+        classic: yes
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Ensure user is in microk8s group
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: microk8s
+        append: yes
+
+    - name: Enable MicroK8s DNS and storage
+      command: microk8s enable dns storage
+      register: result
+      ignore_errors: true
+
+    - name: Wait for MicroK8s to be ready
+      command: microk8s status --wait-ready
+
+    - name: Configure PostgreSQL persistent volume
+      copy:
+        src: pg-storage.yaml
+        dest: /tmp/pg-storage.yaml
+        remote_src: no
+        
+
+    - name: Apply Persistent Volume for PostgreSQL
+      command: microk8s kubectl apply -f /tmp/pg-storage.yaml
+
+    - name: Configure PostgreSQL deployment and service
+      copy:
+        src: /mnt/c/Users/chado/Documents/pythonproject/postgres-deployment.yaml
+        dest: /tmp/postgres-deployment.yaml
+
+    - name: Apply PostgreSQL deployment
+      command: microk8s kubectl apply -f /tmp/postgres-deployment.yaml
