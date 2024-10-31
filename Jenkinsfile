@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "chadon32/bankaccount-app" 
-        KUBECONFIG = '/var/lib/jenkins/.kube/config'          // Path to your kubeconfig file in Jenkins
+        KUBECONFIG = '/var/lib/jenkins/.kube/config'  // Path to kubeconfig file in Jenkins
     }
 
     stages {
@@ -23,9 +23,12 @@ pipeline {
 
         stage('Push Docker Image') {
             steps {
-                withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKERHUB_TOKEN')]) {
+                // Using Docker Hub credentials as username and password
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', 
+                                                 usernameVariable: 'DOCKER_USER', 
+                                                 passwordVariable: 'DOCKER_PASS')]) {
                     script {
-                        docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-token') {
+                        docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
                             docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
                         }
                     }
