@@ -9,7 +9,7 @@ spec:
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: "/mnt/data/postgres"  # Adjust path as needed
+    path: "/mnt/data/postgres"  
 
 ---
 apiVersion: v1
